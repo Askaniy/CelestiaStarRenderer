@@ -21,7 +21,7 @@ def create_img(list_of_mags: Iterable, columns: Sequence, col_size: int, col_zer
     h = h + scale - h % scale
     img = Image.new('RGB', (w, h), 'white' if white_background else 'black')
     draw = ImageDraw.Draw(img)
-    font = ImageFont.truetype(f'{path}/NotoSans-DisplayCondensedSemiBold', 40)
+    font = ImageFont.truetype(f'{path}/fonts/NotoSans-DisplayCondensedSemiBold.ttf', 40)
     for i, column in enumerate(columns):
         draw.text((col_zero + (2*i+1)*col_size, row_zero), column, 'gray', font, anchor='mt')
     for i, star_mag in enumerate(list_of_mags):
