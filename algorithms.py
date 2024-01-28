@@ -151,13 +151,13 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
 a = 0.123
 k = 0.0016
 
-def PSF_Bounded(theta: float, max_theta: float):
+def PSF_Bounded(theta: float, max_theta: float, br_center: float):
     """
     Human eye's point source function from the research by Greg Spencer et al., optimized to fit a square.
     Lower limit on brightness and angular size: 1 Vega and 0.05 degrees per pixel. No upper limits.
     """
     if theta == 0:
-        return np.inf # the center is always overexposed (zero division error)
+        return br_center
     elif theta < max_theta:
         brackets = max_theta / theta - 1
         return k * brackets * brackets
@@ -197,7 +197,7 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
         y = np.arange(y_min, y_max)
         xx, yy = np.meshgrid(x, y)
         theta = np.sqrt(xx*xx + yy*yy) * degree_per_px # array of distances to the center
-        glow_bw = PSF_Bounded(theta, max_theta) # in the [0, 1] range, like in Celestia
+        glow_bw = PSF_Bounded(theta, max_theta, br) # in the [0, 1] range, like in Celestia
         glow_colored = color * np.repeat(np.expand_dims(glow_bw, axis=2), 3, axis=2) # scaling
         arr[center[1]+y_min:center[1]+y_max, center[0]+x_min:center[0]+x_max] += glow_colored
     return arr
