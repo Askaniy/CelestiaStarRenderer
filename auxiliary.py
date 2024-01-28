@@ -5,6 +5,17 @@ import numpy as np
 
 gamma_correction = np.vectorize(lambda br: br * 12.92 if br < 0.0031308 else 1.055 * br**(1.0/2.4) - 0.055)
 
+
+color_saturation_limit = 0.1 # The ratio of the minimum color component to the maximum
+
+def green_normalization(color: np.ndarray):
+    """ Normalizes the color by its green value and corrects extreme saturation """
+    color /= color.max()
+    delta = color_saturation_limit - color.min()
+    if delta > 0:
+        color += delta * (1-color)**2 # desaturating to the saturation limit
+    return color / color[1]
+
 def faintestMag2exposure(faintestMag, br_limit):
     return br_limit * 10**(0.4*faintestMag)
 

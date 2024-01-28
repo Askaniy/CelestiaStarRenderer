@@ -21,14 +21,13 @@ def draw_Original(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple
     - theta is the angle in degrees from the pixel center to the star center
     """
     hight, width, length = arr.shape
-    color0 = (color0 / color0.max()).clip(0.1) # workaround for zero division error
-    color = br0 * color0 / color0[1] # normalize brightness by green channel
+    scaled_color = auxiliary.green_normalization(color0) * br0
     x = np.arange(width) - center[0]
     y = np.arange(hight) - center[1]
     xx, yy = np.meshgrid(x, y)
     theta = np.sqrt(xx*xx + yy*yy) * degree_per_px # array of distances to the center
-    bw = PSF_Original(theta) / PSF_Original_0deg
-    return arr + color * np.repeat(np.expand_dims(bw, axis=2), 3, axis=2)
+    glow = PSF_Original(theta) / PSF_Original_0deg
+    return arr + scaled_color * np.repeat(np.expand_dims(glow, axis=2), 3, axis=2)
 
 
 
@@ -56,11 +55,11 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
-    color0 = (color0 / color0.max()).clip(0.1) # workaround for zero division error
-    color = br0 * color0 / color0[1] # normalize brightness by green channel
-    if np.all(color < 1):
+    color = auxiliary.green_normalization(color0)
+    scaled_color = color * br0
+    if np.all(scaled_color < 1):
         # Option 1: single pixel render
-        arr[center[1], center[0]] += color
+        arr[center[1], center[0]] += scaled_color
     else:
         # Option 2: glow square render
         hight, width, length = arr.shape
@@ -71,8 +70,6 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
         min_theta = h + b / (np.sqrt(k) + 1)
         half_sq = floor(max_theta / degree_per_px)
         # More accurate formula, but may cause problems on extreme colors:
-        # br = color.max()
-        # ...
         # half_sq = floor(((max_theta - h) / (np.sqrt(0.5 * k * br_limit / br) + 1) + h) / degree_per_px)
         if corners:
             arr = auxiliary.draw_corners(arr, center, half_sq)
@@ -84,9 +81,9 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
         y = np.arange(y_min, y_max)
         xx, yy = np.meshgrid(x, y)
         theta = np.sqrt(xx*xx + yy*yy) * degree_per_px # array of distances to the center
-        bw = PSF_Optimized(theta, min_theta, max_theta, h, k, b) # in the [0, 1] range, like in Celestia
-        color = color * np.repeat(np.expand_dims(bw, axis=2), 3, axis=2)
-        arr[center[1]+y_min:center[1]+y_max, center[0]+x_min:center[0]+x_max] += color
+        glow_bw = PSF_Optimized(theta, min_theta, max_theta, h, k, b) # in the [0, 1] range, like in Celestia
+        glow_colored = scaled_color * np.repeat(np.expand_dims(glow_bw, axis=2), 3, axis=2)
+        arr[center[1]+y_min:center[1]+y_max, center[0]+x_min:center[0]+x_max] += glow_colored
     return arr
 
 
@@ -115,11 +112,11 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
-    color0 = (color0 / color0.max()).clip(0.1) # workaround for zero division error
-    color = br0 * color0 / color0[1] # normalize brightness by green channel
-    if np.all(color < 1):
+    color = auxiliary.green_normalization(color0)
+    scaled_color = color * br0
+    if np.all(scaled_color < 1):
         # Option 1: single pixel render
-        arr[center[1], center[0]] += color
+        arr[center[1], center[0]] += scaled_color
     else:
         # Option 2: glow square render
         hight, width, length = arr.shape
@@ -141,9 +138,9 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
         y = np.arange(y_min, y_max)
         xx, yy = np.meshgrid(x, y)
         theta = np.sqrt(xx*xx + yy*yy) * degree_per_px # array of distances to the center
-        bw = PSF_Simplified(theta, min_theta, max_theta, k) # in the [0, 1] range, like in Celestia
-        color = color * np.repeat(np.expand_dims(bw, axis=2), 3, axis=2)
-        arr[center[1]+y_min:center[1]+y_max, center[0]+x_min:center[0]+x_max] += color
+        glow_bw = PSF_Simplified(theta, min_theta, max_theta, k) # in the [0, 1] range, like in Celestia
+        glow_colored = scaled_color * np.repeat(np.expand_dims(glow_bw, axis=2), 3, axis=2)
+        arr[center[1]+y_min:center[1]+y_max, center[0]+x_min:center[0]+x_max] += glow_colored
     return arr
 
 
@@ -177,12 +174,11 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
-    color0 = (color0 / color0.max()).clip(0.1) # workaround for zero division error
-    color0 /= color0[1] # normalize color by green channel
-    color = color0 * br0 # scaling
-    if np.all(color < 1):
+    color = auxiliary.green_normalization(color0)
+    scaled_color = color * br0
+    if np.all(scaled_color < 1):
         # Option 1: single pixel render
-        arr[center[1], center[0]] += color
+        arr[center[1], center[0]] += scaled_color
     else:
         # Option 2: glow square render
         hight, width, length = arr.shape
@@ -201,9 +197,9 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
         y = np.arange(y_min, y_max)
         xx, yy = np.meshgrid(x, y)
         theta = np.sqrt(xx*xx + yy*yy) * degree_per_px # array of distances to the center
-        bw = PSF_Bounded(theta, max_theta) # in the [0, 1] range, like in Celestia
-        color = color0 * np.repeat(np.expand_dims(bw, axis=2), 3, axis=2) # scaling
-        arr[center[1]+y_min:center[1]+y_max, center[0]+x_min:center[0]+x_max] += color
+        glow_bw = PSF_Bounded(theta, max_theta) # in the [0, 1] range, like in Celestia
+        glow_colored = color * np.repeat(np.expand_dims(glow_bw, axis=2), 3, axis=2) # scaling
+        arr[center[1]+y_min:center[1]+y_max, center[0]+x_min:center[0]+x_max] += glow_colored
     return arr
 
 
