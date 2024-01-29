@@ -41,8 +41,6 @@ else:
 # and the brightness that the star would have with this square size, scaled by 2/pi as preparation for arctan().
 max_square_size = 512 # px
 max_br = (degree_per_px * max_square_size / algorithms.a)**2 / (2*np.pi)
-# More accurate formula, but may cause problems on extreme colors:
-# max_br = (degree_per_px * max_square_size / algorithms.a * (np.sqrt(0.5 * br_limit / algorithms.k) + 1) )**2 / (2*np.pi)
 
 # Chart properties
 columns = {
@@ -70,7 +68,7 @@ arr = np.zeros((h//scale, w//scale, 3))
 # The stars rendering cycle
 
 for i, algorithm in enumerate(columns.values()):
-    x_shift = (col_zero + (2*i+1) * col_size)
+    x_shift = col_zero + (2*i+1) * col_size
     for j, star_mag in enumerate(list_of_mags):
         linear_br = 10**(-0.4 * star_mag) * exposure # scaled brightness measured in Vegas
         if linear_br < br_limit:
