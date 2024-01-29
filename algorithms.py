@@ -68,9 +68,8 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
         k = 38581.577272697796 * max_theta**2.368787717957141  # precision in decimal places can be reduced if necessary
         b = max_theta - h
         min_theta = h + b / (np.sqrt(k) + 1)
-        half_sq = floor(max_theta / degree_per_px)
-        # More accurate formula, but may cause problems on extreme colors:
-        # half_sq = floor(((max_theta - h) / (np.sqrt(0.5 * k * br_limit / br) + 1) + h) / degree_per_px)
+        half_sq = floor(max_theta / degree_per_px - 0.5)
+        # -1/2 because we have +1/2 from central pixel, and -2/2 from side pixels where PSF=0
         if corners:
             arr = auxiliary.draw_corners(arr, center, half_sq)
         x_min = -min(half_sq, center[0])
@@ -123,11 +122,8 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
         max_theta = 0.2 * np.sqrt(br0) # glow radius
         k = 3.3e-5 * max_theta**-2.5 # common constant, depending originally on star brightness
         min_theta = max_theta / (k**-0.5 + 1)
-        half_sq = floor(max_theta / degree_per_px)
-        # More accurate formula, but may cause problems on extreme colors:
-        # br = color.max()
-        # ...
-        # half_sq = floor(max_theta / (np.sqrt(0.5 * br_limit / (k * br)) + 1) / degree_per_px)
+        half_sq = floor(max_theta / degree_per_px - 0.5)
+        # -1/2 because we have +1/2 from central pixel, and -2/2 from side pixels where PSF=0
         if corners:
             arr = auxiliary.draw_corners(arr, center, half_sq)
         x_min = -min(half_sq, center[0])
@@ -184,9 +180,8 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
         hight, width, length = arr.shape
         br = np.arctan(br0 / max_br) * max_br # dimmed brightness
         max_theta = a * np.sqrt(br) # glow radius
-        half_sq = floor(max_theta / degree_per_px)
-        # More accurate formula, but may cause problems on extreme colors:
-        # half_sq = floor(max_theta / (0.5 * np.sqrt(br_limit / k) + 1) / degree_per_px)
+        half_sq = floor(max_theta / degree_per_px - 0.5)
+        # -1/2 because we have +1/2 from central pixel, and -2/2 from side pixels where PSF=0
         if corners:
             arr = auxiliary.draw_corners(arr, center, half_sq)
         x_min = -min(half_sq, center[0])
