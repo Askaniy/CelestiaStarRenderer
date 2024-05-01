@@ -1,4 +1,4 @@
-# CelestiaStarRenderer
+# Celestia Star Renderer
 
 Realistic star rendering algorithms developed for the [Celestia Project](https://github.com/CelestiaProject) to assist with the transition to gamma corrected rendering. The repository was created because the [original issue](https://github.com/CelestiaProject/Celestia/issues/1948) updates became too complex to maintain.
 
@@ -28,15 +28,24 @@ Definition of a “convenient linear brightness scale” that is used for all th
 
 ![CSR render example](CSR_render_example.png)
 
+You can configure rendering in `main.py` through its variables.
+
 
 ## Installation
 
-Tested on Python versions 3.9-3.11, it may work on older ones too. You can configure rendering in `main.py` through variables.
+Python version 3.9 or higher is required. On Linux, you may need to replace the `python` command with `python3`.
 
-1. Clone the repository or download archive by the GitHub web interface;
-2. Open the folder in terminal and create a virtual environment with `python3 -m venv .venv`;
-3. Install the libraries needed by `.venv/bin/pip install -r requirements.txt`;
-4. Execute `.venv/bin/python3 -u main.py`.
+**Step Zero**: Clone the repository or download the archive using the GitHub web interface. In the console, go to the project root folder.
+
+### Simple installation
+1. Install the dependencies with `pip install -r requirements.txt`;
+2. Execute `python -u main.py`.
+
+### In virtual environment
+1. Create a virtual environment with `python -m venv .venv`;
+2. Install the dependencies with `.venv/bin/pip install -r requirements.txt`;
+3. Execute `.venv/bin/python -u main.py`.
+
 
 ## Known problems
 - Subpixel render will not work well, star is supposed to be strictly in the center. Otherwise, I assume it will lead to unexpected brightness fluctuations unless some kind of the PSF integration by pixel is implemented, but this is expensive. This means that as the DPI increases, the size of stars will decrease.
