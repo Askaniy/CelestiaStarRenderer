@@ -6,7 +6,7 @@ import auxiliary
 # Original PSF algorithm
 
 def PSF_Original(theta: float):
-    """ Unmodified photopic point source function from the research by Greg Spencer et al. """
+    """ Unmodified photopic point source function from the research by Greg Spencer et al. (1995) """
     f0 = 2.61e6 * np.exp(-(50*theta)**2)
     f1 = 20.91 / (theta + 0.02)**3
     f2 = 72.37 / (theta + 0.02)**2
@@ -16,7 +16,7 @@ PSF_Original_0deg = PSF_Original(0)
 def draw_Original(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
                   degree_per_px: float = None, corners: bool = None, max_br: float = None):
     """
-    Adds a star to the numpy array using the unmodified photopic PSF from the research by Greg Spencer et al.
+    Adds a star to the numpy array using the unmodified photopic PSF from the research by Greg Spencer et al. (1995)
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
@@ -35,7 +35,7 @@ def draw_Original(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple
 
 def PSF_Optimized(theta: float, min_theta: float, max_theta: float, h: float, k: float, b: float):
     """
-    Human eye's point source function from the research by Greg Spencer et al., optimized to fit a square.
+    Human eye's point source function from the research by Greg Spencer et al. (1995), optimized to fit a square.
     Lower limit on brightness and angular size: 1 Vega and 0.05 degrees per pixel. No upper limits.
     """
     if theta < min_theta:
@@ -50,7 +50,7 @@ PSF_Optimized = np.vectorize(PSF_Optimized)
 def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
                    degree_per_px: float, corners: bool, max_br: float = None):
     """
-    Adds a star to the numpy array using the "Optimized" photopic PSF from the research by Greg Spencer et al.
+    Adds a star to the numpy array using the "Optimized" photopic PSF from the research by Greg Spencer et al. (1995)
     Please note: subpixel render will not work well, star is assumed to be in the center.
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
@@ -91,7 +91,7 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
 
 def PSF_Simplified(theta: float, min_theta: float, max_theta: float, k: float):
     """
-    Human eye's point source function from the research by Greg Spencer et al., optimized to fit a square.
+    Human eye's point source function from the research by Greg Spencer et al. (1995), optimized to fit a square.
     Lower limit on brightness and angular size: 1 Vega and 0.05 degrees per pixel. No upper limits.
     """
     if theta < min_theta:
@@ -106,7 +106,7 @@ PSF_Simplified = np.vectorize(PSF_Simplified)
 def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
                     degree_per_px: float, corners: bool, max_br: float = None):
     """
-    Adds a star to the numpy array using the "Simplified" photopic PSF from the research by Greg Spencer et al.
+    Adds a star to the numpy array using the "Simplified" photopic PSF from the research by Greg Spencer et al. (1995)
     Please note: subpixel render will not work well, star is assumed to be in the center.
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
@@ -149,7 +149,7 @@ k = 0.0016
 
 def PSF_Bounded(theta: float, max_theta: float, br_center: float):
     """
-    Human eye's point source function from the research by Greg Spencer et al., optimized to fit a square.
+    Human eye's point source function from the research by Greg Spencer et al. (1995), optimized to fit a square.
     Lower limit on brightness and angular size: 1 Vega and 0.05 degrees per pixel. No upper limits.
     """
     if theta == 0:
@@ -164,7 +164,7 @@ PSF_Bounded = np.vectorize(PSF_Bounded)
 def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
                     degree_per_px: float, corners: bool, max_br: float):
     """
-    Adds a star to the numpy array using the "Bounded" photopic PSF from the research by Greg Spencer et al.,
+    Adds a star to the numpy array using the "Bounded" photopic PSF from the research by Greg Spencer et al. (1995),
     but ensures that the glow size does not exceed a pre-specified square.
     Please note: subpixel render will not work well, star is assumed to be in the center.
     - br0 is the brightness of the star

@@ -13,7 +13,7 @@ The problem was already noticed and described by Chris Layrel, 2010 forum discus
 
 ## Solutions
 
-Several algorithms have been developed with different advantages and disadvantages. They all rely on the photopic point source function (PSF) from [this paper](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.41.1625&rep=rep1&type=pdf).
+Several algorithms have been developed with different advantages and disadvantages. They all rely on the photopic point source function (PSF) from [this paper](https://dl.acm.org/doi/10.1145/218380.218466).
 
 - `Original`: Just uses the PSF. Not limited in render size and very slow.
 - `Optimized`: Empirically, the PSF was simplified to one term and pre-calculated coefficients selected using the least squares method. Therefore, it became possible to pre-calculate the size of the square within which the glow will be visible. Virtually indistinguishable from the original PSF over the entire brightness range.

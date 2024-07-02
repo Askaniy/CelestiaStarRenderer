@@ -14,7 +14,7 @@ path = Path(__file__).parent.resolve()
 # Default is 0.05. Can be higher, but lower values are less realistic in the central brightness peak
 degree_per_px = 0.05 # variable
 
-# Exposure, measured in brightness of Vega
+# Exposure in seconds
 # Exposure of 1 means that Vega occupies a single pixel with no glow, and 5 means that
 # this is true for a star 5 times dimmer than Vega, while Vega itself get a noticeable glow.
 exposure = 1. # variable
