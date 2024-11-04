@@ -20,10 +20,10 @@ def draw_Original(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
-    hight, width, length = arr.shape
+    height, width, length = arr.shape
     scaled_color = auxiliary.green_normalization(color0) * br0
     x = np.arange(width) - center[0]
-    y = np.arange(hight) - center[1]
+    y = np.arange(height) - center[1]
     xx, yy = np.meshgrid(x, y)
     theta = np.sqrt(xx*xx + yy*yy) * degree_per_px # array of distances to the center
     glow = PSF_Original(theta) / PSF_Original_0deg
@@ -62,7 +62,7 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
         arr[center[1], center[0]] += scaled_color
     else:
         # Option 2: glow square render
-        hight, width, length = arr.shape
+        height, width, length = arr.shape
         max_theta = 0.33435822702992773 * np.sqrt(br0) # glow radius
         h = 0.0082234880783653 * max_theta**0.7369983254906639 # h, k, b - common constants, depending originally on star brightness
         k = 38581.577272697796 * max_theta**2.368787717957141  # precision in decimal places can be reduced if necessary
@@ -75,7 +75,7 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
         x_min = -min(half_sq, center[0])
         x_max = min(half_sq+1, width-center[0])
         y_min = -min(half_sq, center[1])
-        y_max = min(half_sq+1, hight-center[1])
+        y_max = min(half_sq+1, height-center[1])
         x = np.arange(x_min, x_max)
         y = np.arange(y_min, y_max)
         xx, yy = np.meshgrid(x, y)
@@ -118,7 +118,7 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
         arr[center[1], center[0]] += scaled_color
     else:
         # Option 2: glow square render
-        hight, width, length = arr.shape
+        height, width, length = arr.shape
         max_theta = 0.2 * np.sqrt(br0) # glow radius
         k = 3.3e-5 * max_theta**-2.5 # common constant, depending originally on star brightness
         min_theta = max_theta / (k**-0.5 + 1)
@@ -129,7 +129,7 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
         x_min = -min(half_sq, center[0])
         x_max = min(half_sq+1, width-center[0])
         y_min = -min(half_sq, center[1])
-        y_max = min(half_sq+1, hight-center[1])
+        y_max = min(half_sq+1, height-center[1])
         x = np.arange(x_min, x_max)
         y = np.arange(y_min, y_max)
         xx, yy = np.meshgrid(x, y)
@@ -177,7 +177,7 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
         arr[center[1], center[0]] += scaled_color
     else:
         # Option 2: glow square render
-        hight, width, length = arr.shape
+        height, width, length = arr.shape
         br = np.arctan(br0 / max_br) * max_br # dimmed brightness
         max_theta = a * np.sqrt(br) # glow radius
         half_sq = floor(max_theta / degree_per_px - 0.5)
@@ -187,7 +187,7 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
         x_min = -min(half_sq, center[0])
         x_max = min(half_sq+1, width-center[0])
         y_min = -min(half_sq, center[1])
-        y_max = min(half_sq+1, hight-center[1])
+        y_max = min(half_sq+1, height-center[1])
         x = np.arange(x_min, x_max)
         y = np.arange(y_min, y_max)
         xx, yy = np.meshgrid(x, y)

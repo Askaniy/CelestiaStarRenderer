@@ -41,8 +41,8 @@ def create_img(list_of_mags: Iterable, columns: Sequence, col_size: int, col_zer
     for i, column in enumerate(columns):
         draw.text((col_zero + (2*i+1)*col_size, row_zero), column, 'gray', font, anchor='mt')
     for i, star_mag in enumerate(list_of_mags):
-        hight = row_zero + row_size * (i+1)
-        draw.text((col_zero/2, hight), f'm = {star_mag}', 'gray', font, anchor='mm')
+        height = row_zero + row_size * (i+1)
+        draw.text((col_zero/2, height), f'm = {star_mag}', 'gray', font, anchor='mm')
     return img
 
 def scale_array(arr: np.ndarray, times: int):
@@ -71,13 +71,13 @@ def img2array(img: Image.Image):
     return data
 
 def draw_corners(arr: np.ndarray, center: tuple[int, int], half_sq: int):
-    hight, width, channels = arr.shape
-    if 0 < (i := center[0]-half_sq) < width and 0 < (j := center[1]-half_sq) < hight:
+    height, width, channels = arr.shape
+    if 0 < (i := center[0]-half_sq) < width and 0 < (j := center[1]-half_sq) < height:
         arr[j, i, 0] = arr[j, i+1, 0] = arr[j+1, i, 0] = 1.
-    if 0 < (i := center[0]-half_sq) < width and 0 < (j := center[1]+half_sq) < hight:
+    if 0 < (i := center[0]-half_sq) < width and 0 < (j := center[1]+half_sq) < height:
         arr[j, i, 0] = arr[j, i+1, 0] = arr[j-1, i, 0] = 1.
-    if 0 < (i := center[0]+half_sq) < width and 0 < (j := center[1]-half_sq) < hight:
+    if 0 < (i := center[0]+half_sq) < width and 0 < (j := center[1]-half_sq) < height:
         arr[j, i, 0] = arr[j, i-1, 0] = arr[j+1, i, 0] = 1.
-    if 0 < (i := center[0]+half_sq) < width and 0 < (j := center[1]+half_sq) < hight:
+    if 0 < (i := center[0]+half_sq) < width and 0 < (j := center[1]+half_sq) < height:
         arr[j, i, 0] = arr[j, i-1, 0] = arr[j-1, i, 0] = 1.
     return arr
