@@ -1,11 +1,13 @@
-from math import floor
 import numpy as np
-import auxiliary
+import numpy.typing as npt
+from math import floor
+
+from CSR import green_normalization
 
 
 # Original PSF algorithm
 
-def PSF_Original(theta: float):
+def PSF_Original(theta: float | npt.NDArray):
     """ Unmodified photopic point source function from the research by Greg Spencer et al. (1995) """
     f0 = 2.61e6 * np.exp(-(50*theta)**2)
     f1 = 20.91 / (theta + 0.02)**3
@@ -13,15 +15,15 @@ def PSF_Original(theta: float):
     return 0.384 * f0 + 0.478 * f1 + 0.138 * f2
 PSF_Original_0deg = PSF_Original(0)
 
-def draw_Original(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
-                  degree_per_px: float = None, corners: bool = None, max_br: float = None):
+def draw_Original(arr: npt.NDArray, br0: float, color0: npt.NDArray, center: tuple[int, int],
+                  degree_per_px: float | None = None, corners: bool | None = None, max_br: float | None = None):
     """
     Adds a star to the numpy array using the unmodified photopic PSF from the research by Greg Spencer et al. (1995)
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
     height, width, length = arr.shape
-    scaled_color = auxiliary.green_normalization(color0) * br0
+    scaled_color = green_normalization(color0) * br0
     x = np.arange(width) - center[0]
     y = np.arange(height) - center[1]
     xx, yy = np.meshgrid(x, y)
@@ -33,7 +35,7 @@ def draw_Original(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple
 
 # Optimized PSF algorithm
 
-def PSF_Optimized(theta: float, min_theta: float, max_theta: float, h: float, k: float, b: float):
+def PSF_Optimized(theta: float | npt.NDArray, min_theta: float, max_theta: float, h: float, k: float, b: float):
     """
     Human eye's point source function from the research by Greg Spencer et al. (1995), optimized to fit a square.
     Lower limit on brightness and angular size: 1 Vega and 0.05 degrees per pixel. No upper limits.
@@ -47,15 +49,15 @@ def PSF_Optimized(theta: float, min_theta: float, max_theta: float, h: float, k:
         return 0. # after max_theta function starts to grow again
 PSF_Optimized = np.vectorize(PSF_Optimized)
 
-def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
-                   degree_per_px: float, corners: bool, max_br: float = None):
+def draw_Optimized(arr: npt.NDArray, br0: float, color0: npt.NDArray, center: tuple[int, int],
+                   degree_per_px: float, corners: bool, max_br: float | None = None):
     """
     Adds a star to the numpy array using the "Optimized" photopic PSF from the research by Greg Spencer et al. (1995)
     Please note: subpixel render will not work well, star is assumed to be in the center.
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
-    color = auxiliary.green_normalization(color0)
+    color = green_normalization(color0)
     scaled_color = color * br0
     if np.all(scaled_color < 1):
         # Option 1: single pixel render
@@ -71,7 +73,7 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
         half_sq = floor(max_theta / degree_per_px - 0.5)
         # -1/2 because we have +1/2 from central pixel, and -2/2 from side pixels where PSF=0
         if corners:
-            arr = auxiliary.draw_corners(arr, center, half_sq)
+            arr = draw_corners(arr, center, half_sq)
         x_min = -min(half_sq, center[0])
         x_max = min(half_sq+1, width-center[0])
         y_min = -min(half_sq, center[1])
@@ -89,7 +91,7 @@ def draw_Optimized(arr: np.ndarray, br0: float, color0: np.ndarray, center: tupl
 
 # Simplified PSF algorithm
 
-def PSF_Simplified(theta: float, min_theta: float, max_theta: float, k: float):
+def PSF_Simplified(theta: float | npt.NDArray, min_theta: float, max_theta: float, k: float):
     """
     Human eye's point source function from the research by Greg Spencer et al. (1995), optimized to fit a square.
     Lower limit on brightness and angular size: 1 Vega and 0.05 degrees per pixel. No upper limits.
@@ -103,15 +105,15 @@ def PSF_Simplified(theta: float, min_theta: float, max_theta: float, k: float):
         return 0. # after max_theta function starts to grow again
 PSF_Simplified = np.vectorize(PSF_Simplified)
 
-def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
-                    degree_per_px: float, corners: bool, max_br: float = None):
+def draw_Simplified(arr: npt.NDArray, br0: float, color0: npt.NDArray, center: tuple[int, int],
+                    degree_per_px: float, corners: bool, max_br: float | None = None):
     """
     Adds a star to the numpy array using the "Simplified" photopic PSF from the research by Greg Spencer et al. (1995)
     Please note: subpixel render will not work well, star is assumed to be in the center.
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
-    color = auxiliary.green_normalization(color0)
+    color = green_normalization(color0)
     scaled_color = color * br0
     if np.all(scaled_color < 1):
         # Option 1: single pixel render
@@ -125,7 +127,7 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
         half_sq = floor(max_theta / degree_per_px - 0.5)
         # -1/2 because we have +1/2 from central pixel, and -2/2 from side pixels where PSF=0
         if corners:
-            arr = auxiliary.draw_corners(arr, center, half_sq)
+            arr = draw_corners(arr, center, half_sq)
         x_min = -min(half_sq, center[0])
         x_max = min(half_sq+1, width-center[0])
         y_min = -min(half_sq, center[1])
@@ -147,7 +149,7 @@ def draw_Simplified(arr: np.ndarray, br0: float, color0: np.ndarray, center: tup
 a = 0.123
 k = 0.0016
 
-def PSF_Bounded(theta: float, max_theta: float, br_center: float):
+def PSF_Bounded(theta: float | npt.NDArray, max_theta: float, br_center: float):
     """
     Human eye's point source function from the research by Greg Spencer et al. (1995), optimized to fit a square.
     Lower limit on brightness and angular size: 1 Vega and 0.05 degrees per pixel. No upper limits.
@@ -161,7 +163,7 @@ def PSF_Bounded(theta: float, max_theta: float, br_center: float):
         return 0. # after max_theta function starts to grow again
 PSF_Bounded = np.vectorize(PSF_Bounded)
 
-def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[int, int],
+def draw_Bounded(arr: npt.NDArray, br0: float, color0: npt.NDArray, center: tuple[int, int],
                     degree_per_px: float, corners: bool, max_br: float):
     """
     Adds a star to the numpy array using the "Bounded" photopic PSF from the research by Greg Spencer et al. (1995),
@@ -170,7 +172,7 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
     - br0 is the brightness of the star
     - theta is the angle in degrees from the pixel center to the star center
     """
-    color = auxiliary.green_normalization(color0)
+    color = green_normalization(color0)
     scaled_color = color * br0
     if np.all(scaled_color < 1):
         # Option 1: single pixel render
@@ -183,7 +185,7 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
         half_sq = floor(max_theta / degree_per_px - 0.5)
         # -1/2 because we have +1/2 from central pixel, and -2/2 from side pixels where PSF=0
         if corners:
-            arr = auxiliary.draw_corners(arr, center, half_sq)
+            arr = draw_corners(arr, center, half_sq)
         x_min = -min(half_sq, center[0])
         x_max = min(half_sq+1, width-center[0])
         y_min = -min(half_sq, center[1])
@@ -201,7 +203,7 @@ def draw_Bounded(arr: np.ndarray, br0: float, color0: np.ndarray, center: tuple[
 
 # Full-screen PSF algorithm
 
-def PSF_fullscreen(theta2: float, min_theta2: float):
+def PSF_fullscreen(theta2: float | npt.NDArray, min_theta2: float):
     """
     Human eye's point source function, optimized to be a full-screen shader.
     The price to pay for simplification is a brightness reduction compared to the original PSF.
@@ -210,3 +212,17 @@ def PSF_fullscreen(theta2: float, min_theta2: float):
         return 1 # overexposed
     else:
         return 4.43366571e-6 / theta2
+
+
+
+def draw_corners(arr: npt.NDArray, center: tuple[int, int], half_sq: int):
+    height, width, channels = arr.shape
+    if 0 < (i := center[0]-half_sq) < width and 0 < (j := center[1]-half_sq) < height:
+        arr[j, i, 0] = arr[j, i+1, 0] = arr[j+1, i, 0] = 1.
+    if 0 < (i := center[0]-half_sq) < width and 0 < (j := center[1]+half_sq) < height:
+        arr[j, i, 0] = arr[j, i+1, 0] = arr[j-1, i, 0] = 1.
+    if 0 < (i := center[0]+half_sq) < width and 0 < (j := center[1]-half_sq) < height:
+        arr[j, i, 0] = arr[j, i-1, 0] = arr[j+1, i, 0] = 1.
+    if 0 < (i := center[0]+half_sq) < width and 0 < (j := center[1]+half_sq) < height:
+        arr[j, i, 0] = arr[j, i-1, 0] = arr[j-1, i, 0] = 1.
+    return arr
