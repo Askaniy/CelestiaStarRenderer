@@ -1,30 +1,15 @@
 # Celestia Star Renderer
 
-Realistic star rendering method developed for the [Celestia Project](https://github.com/CelestiaProject) to assist with the transition to gamma corrected (sRGB) rendering.
+Realistic star rendering method developed for the [Celestia Project](https://github.com/CelestiaProject) to assist with the transition to gamma corrected (sRGB) rendering. It relies on the photopic point source function (PSF) by [Spencer et al. 1995](https://dl.acm.org/doi/10.1145/218380.218466). In its original form, it could be used for convolution at each frame, which is slow, or it could be cropped, which would result in jagged edges. An approximating function has been found that does not alter the appearance, but is simple and spatially bounded.
 
+Brightness of a light source (*radiance*, in terms of dimensionality) is expressed in peak value units. A radiance value of 1 distinguishes between two rendering modes:
 
-## Ground
+1. *Point mode*: a circular linear distribution with a diameter of several pixels.
+2. *Eye PSF mode*: an approximation of the actual PSF with pre-calculated exact size.
 
-- Star styles do not accurately model their physical differences in brightness.
-- Gamma correction enhances the effect, making the star field appear flat.
+On other programming languages, the method can be implemented in two separate shaders. Gamma correction is applied at the end.
 
-The problem was already noticed and described by Chris Layrel, 2010 forum discussion is [here](https://celestiaproject.space/forum/viewtopic.php?f=10&t=16031) and led to [this branch](https://github.com/CelestiaProject/Celestia/tree/new-stars-v2). But it was “buggy and slow”, with squares around bright stars. The discussion and early development are described in the [issue](https://github.com/CelestiaProject/Celestia/issues/1948).
-
-
-## Solution
-
-To address these issues, I propose a physically accurate, optimized rendering method. It relies on the photopic point source function (PSF) from [this paper](https://dl.acm.org/doi/10.1145/218380.218466).
-
-The PSF cannot be used as presented. Otherwise, you would either have to apply a convolution to each frame (which is slow) or crop the original, unbounded PSF to a certain radius (which would result in jagged edges). In turn, the proposed method introduces a true final bloom size while only slightly altering the visual appearance. It is also computationally simple.
-
-Brightness of a light source (“radiance”, in terms of dimensionality) is expressed in peak value units. A radiance value of 1 distinguishes between two rendering modes:
-
-1. “Point mode”: a circular linear distribution with a diameter of several pixels.
-2. “Eye PSF mode”: an approximation of the actual PSF, but with pre-calculated exact size.
-
-If the source's peak radiance is greater than 1, the second mode's bloom effect is added to the point. This means that the method can be implemented as two separate shaders. Gamma correction is applied at the end.
-
-The interface is implemented as class `RenderEngine`, which is located in [`CSR.py`](CSR.py). Draw a light source on a NumPy array using the `draw_source()` method. Check out the comments in the code for details.
+The interface is provided through class `RenderEngine`, which is located in [`CSR.py`](CSR.py). Draw a light source on a NumPy array using the `draw_source()` method. Check out the comments in the code for details.
 
 
 ## Examples
@@ -40,7 +25,7 @@ The radiance increases logarithmically.
 
 ### [Chart](example_chart.py)
 
-The model depends on two parameters: “optimization” and the radius of the point mode. With zero optimization, the model, like the original PSF, is not size-constrained.
+The model depends on two parameters: "optimization" and the radius of the point mode. With zero optimization, the model, like the original PSF, is not size-constrained.
 
 The transition peak radiance of 1 is represented by 0 magnitude.
 
@@ -67,6 +52,8 @@ Python version 3.11 or higher is required. Works on Windows/macOS/Linux.
 
 ## History
 
-The repository and the method were redesigned in 2026. The initial results (from 2023-2024) are stored in [`legacy_algorithms.py`](legacy_algorithms.py).
+In Celestia, as in many other programs, the rendering of stars was implemented approximately, without checks for physical accuracy. Recently implemented gamma correction enhances the effect, making the star field appear flat.
+The problem was already noticed and described by Chris Layrel, 2010 forum discussion is [here](https://celestiaproject.space/forum/viewtopic.php?f=10&t=16031) and led to [this branch](https://github.com/CelestiaProject/Celestia/tree/new-stars-v2). But it was "buggy and slow", with squares around bright stars.
+To address these issues, I [proposed](https://github.com/CelestiaProject/Celestia/issues/1948) the initial approaches in 2023-2024 (see [`legacy_algorithms.py`](legacy_algorithms.py)). The repository and the method were redesigned in 2026.
 
 Not vibe coded!
