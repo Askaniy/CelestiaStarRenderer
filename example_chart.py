@@ -12,8 +12,8 @@ from CSR import RenderEngine, OriginalPSF, gamma_correction, img2array
 exposure = 1. # variable
 
 # Size of the source in the point rendering mode
-# 1.5 works for the most cases. However, you can increase it for high DPI screens.
-point_radius_px = 1.5
+# 2 works for the most cases. However, you can increase it for high DPI screens.
+point_radius_px = 2.
 
 # Data to be shown
 # Magnitudes of sources to be rendered and their color
@@ -63,7 +63,7 @@ h = H // scale_factor
 arr = np.zeros((h, w, 3))
 
 engines = [
-    OriginalPSF(w, h, deg_per_px=0.027 / point_radius_px),
+    OriginalPSF(w, h, deg_per_px=0.03 / point_radius_px),
     RenderEngine(w, h, optimization=0.0, point_radius_px=point_radius_px),
     RenderEngine(w, h, optimization=0.1, point_radius_px=point_radius_px),
     RenderEngine(w, h, optimization=1.0, point_radius_px=point_radius_px),

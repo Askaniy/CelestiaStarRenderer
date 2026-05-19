@@ -12,7 +12,7 @@ class RenderEngine:
             channels: int = 3,
             optimization: int | float = 0.1,
             max_peak_radiance: int | float = 10_000,
-            point_radius_px: int | float = 1.5,
+            point_radius_px: int | float = 2.0,
             is_cylindrical: bool = False
         ) -> None:
         self.W = width
@@ -29,11 +29,11 @@ class RenderEngine:
         self.is_cylindrical = is_cylindrical
         self.color_saturation_limit = color_saturation_limit # The ratio of the minimum color component to the maximum
         # Point mode parameters
-        self.point_radius_px = point_radius_px # 1.5 -> box size = 3x3 px
-        self.inv_max_offset = 1 / (point_radius_px * np.sqrt(2.)) # [1/px]
+        self.point_radius_px = point_radius_px
         # Eye PSF mode parameters
-        k = 3 # ratio of the point radius to the PSF overexposure radius at the moment of transition
-        # as the starting point, it also affects the speed of bloom size growth
+        k = np.pi # ratio of the point radius to the PSF overexposure radius at the moment of transition
+        # As the starting point, it also affects the speed of bloom size growth
+        # Why π? It was chosen based on experience; yields the best results. I don't know the rationale behind it.
         self.a = optimization / point_radius_px # inverted PSF outer radius at the moment of transition [1/px]
         self.b = 1 / (k / point_radius_px - self.a) # constant [px]
         self.max_peak_radiance = max_peak_radiance # variable, upper brightness limit
@@ -41,7 +41,7 @@ class RenderEngine:
 
     def render_point(self, px_dist: npt.NDArray):
         """ Simple linear brightness distribution. """
-        return np.clip(1. - px_dist * self.inv_max_offset, 0, None)
+        return np.clip(1. - px_dist / self.point_radius_px, 0, None)
 
     def render_eye_PSF(self, px_dist: npt.NDArray, br: float, max_theta: float):
         """ Approximation of the human eye's point source function by Greg Spencer et al. (1995) """
@@ -309,7 +309,7 @@ def img2array(img: Image.Image):
     """
     img.load()
     e = Image._getencoder(img.mode, 'raw', img.mode)
-    e.setimage(img.im)
+    e.setimage(img.im, None)
     shape, typestr = Image._conv_type_shape(img)
     data = np.empty(shape, dtype=np.dtype(typestr))
     mem = data.data.cast('B', (data.data.nbytes,))
