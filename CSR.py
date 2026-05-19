@@ -17,6 +17,7 @@ class RenderEngine:
         ) -> None:
         self.W = width
         self.H = height
+        self.C = channels
         x_range = np.arange(self.W)
         y_range = np.arange(self.H)
         if is_cylindrical:
@@ -25,7 +26,7 @@ class RenderEngine:
             x_range = (x_range + 0.5) * self.rad_per_px
             y_range = 0.5 * np.pi - (y_range + 0.5) * self.rad_per_px
         self.xx, self.yy = np.meshgrid(x_range, y_range)
-        self.canvas_template = np.zeros(shape=(self.H, self.W, channels))
+        self.canvas_template = np.zeros(shape=(self.H, self.W, self.C))
         self.is_cylindrical = is_cylindrical
         self.color_saturation_limit = color_saturation_limit # The ratio of the minimum color component to the maximum
         # Point mode parameters
@@ -53,7 +54,7 @@ class RenderEngine:
     def draw_source(self,
             coordinates: tuple[float, float],
             peak_radiance: float,
-            color: npt.ArrayLike,
+            color: npt.ArrayLike | None = None,
             canvas: npt.NDArray | None = None
         ):
         """
@@ -70,9 +71,12 @@ class RenderEngine:
             # Checking the input
             assert canvas.shape == self.canvas_template.shape
 
-        # Normalization of the source's color by the green value,
-        # since the brightness is often given for the V filter
-        color = green_normalization(color)
+        if color is not None and self.C == 3:
+            # Normalization of the source's color by the green value,
+            # since the brightness is often given for the V filter
+            color = green_normalization(color)
+        else:
+            color = 1
 
         # Setting the coordinates
         if self.is_cylindrical:
