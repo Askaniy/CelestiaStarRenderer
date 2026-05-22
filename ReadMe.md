@@ -1,6 +1,6 @@
 # Celestia Star Renderer
 
-Realistic star rendering method developed for the [Celestia Project](https://github.com/CelestiaProject) to assist with the transition to gamma corrected (sRGB) rendering. It relies on the photopic point source function (PSF) by [Spencer et al. 1995](https://dl.acm.org/doi/10.1145/218380.218466). In its original form, it could be used for convolution at each frame, which is slow, or it could be cropped, which would result in jagged edges. An approximating function has been found that does not alter the appearance, but is simple and spatially bounded. 
+Realistic star rendering method developed for the [Celestia Project](https://github.com/CelestiaProject) to assist with the transition to gamma corrected (sRGB) rendering. It relies on the photopic point source function (PSF) by [Spencer et al. 1995](https://dl.acm.org/doi/10.1145/218380.218466). In its original form, it could be used for convolution at each frame, which is slow, or it could be cropped, which would result in jagged edges. An approximating function has been found that does not alter the appearance, but is simple and spatially bounded.
 
 The function type is specialized depending on the brightness:
 1. *Point mode*: a circular linear distribution with a diameter of several pixels.
@@ -25,8 +25,6 @@ The radiance increases logarithmically.
 ### [Chart](example_chart.py)
 
 The model depends on two parameters: "optimization" and the radius of the point mode. With zero optimization, the model, like the original PSF, is not size-constrained.
-
-The transition peak radiance of 1 is represented by 0 magnitude.
 
 <img src="examples/example_chart.png" width="512" />
 
