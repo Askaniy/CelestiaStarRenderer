@@ -1,7 +1,8 @@
+import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from CSR import RenderEngine, OriginalPSF, gamma_correction, img2array
+from CSR import RenderEngine, gamma_correction, img2array
 
 
 # Settings
@@ -13,11 +14,11 @@ exposure = 1. # variable
 
 # Size of the source in the point rendering mode
 # 2 works for the most cases. However, you can increase it for high DPI screens.
-point_radius_px = 2.
+point_radius = 2. # variable
 
 # Data to be shown
 # Magnitudes of sources to be rendered and their color
-list_of_mags = range(3, -6, -1)
+list_of_mags = range(2, -7, -1)
 source_color = np.array([0.314, 0.561, 1.0]) # color of Vega without gamma correction
 
 # Rendering mode
@@ -43,9 +44,10 @@ row_zero = 50 # px
 
 # Creating the chart
 col_num = len(columns)
+row_num = len(list_of_mags)
 w = col_zero + 2 * col_size * col_num
 w = w + scale_factor - w % scale_factor
-h = row_zero + row_size * (len(list_of_mags) + 1)
+h = row_zero + row_size * (row_num + 1)
 h = h + scale_factor - h % scale_factor
 img = Image.new('RGB', (w, h), 'white' if white_background_flag else 'black')
 draw = ImageDraw.Draw(img)
@@ -63,19 +65,23 @@ h = H // scale_factor
 arr = np.zeros((h, w, 3))
 
 engines = [
-    OriginalPSF(w, h, deg_per_px=0.03 / point_radius_px),
-    RenderEngine(w, h, optimization=0.0, point_radius_px=point_radius_px),
-    RenderEngine(w, h, optimization=0.1, point_radius_px=point_radius_px),
-    RenderEngine(w, h, optimization=1.0, point_radius_px=point_radius_px),
+    RenderEngine(w, h, point_radius=point_radius, optimization=None),
+    RenderEngine(w, h, point_radius=point_radius, optimization=0.0),
+    RenderEngine(w, h, point_radius=point_radius, optimization=0.1),
+    RenderEngine(w, h, point_radius=point_radius, optimization=1.0),
 ]
 
 # The sources rendering cycle
 for i, engine in enumerate(engines):
     x_shift = col_zero + (2*i+1) * col_size
+    start = time.time()
     for j, star_mag in enumerate(list_of_mags):
-        peak_radiance = 10**(-0.4 * star_mag) * exposure # scaled radiance measured in Vegas
+        irradiance = 10**(-0.4 * star_mag) * exposure # in the "Vega normalized" system
         coords = (x_shift // scale_factor, (row_zero + row_size * (j+1)) // scale_factor)
-        arr = engine.draw_source(coords, peak_radiance, source_color, canvas=arr)
+        arr = engine.draw_source(coords, irradiance, source_color, canvas=arr)
+    end = time.time()
+    dt = end - start
+    print(f'Engine {i+1}: rendered {row_num} stars in {1000 * dt:.3f} ms')
 
 # Post processing
 arr = np.clip(arr, 0, 1)

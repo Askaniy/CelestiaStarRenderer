@@ -14,7 +14,7 @@ np.random.seed(42)
 df = pd.DataFrame({
     'RA': np.random.uniform(0, 2*np.pi, n),
     'Dec': np.arcsin(np.random.uniform(-1, 1, n)),
-    'V': np.random.pareto(1, n) / 100,
+    'V': np.random.pareto(1, n) / 10,
     'R': np.random.uniform(0, 1, n),
     'G': np.random.uniform(0, 1, n),
     'B': np.random.uniform(0, 1, n)

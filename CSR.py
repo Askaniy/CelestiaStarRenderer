@@ -1,7 +1,54 @@
 import numpy as np
 import numpy.typing as npt
+from functools import lru_cache
 from math import floor, ceil
 from PIL import Image
+
+
+
+# === Rendering functions ===
+
+def render_point(px_dist: npt.NDArray, point_radius: int | float):
+    """ Simple linear brightness distribution. """
+    return np.clip(1. - px_dist / point_radius, 0, None)
+
+def render_eye_PSF(px_dist: npt.NDArray, br: float, max_theta: float, a: float, b: float):
+    """ Approximation of the human eye's point source function by Greg Spencer et al. (1995) """
+    arr = np.zeros_like(px_dist)
+    render_mask = px_dist < max_theta
+    arr[render_mask] = ((br**0.4 / px_dist[render_mask] - a) * b)**2.5
+    return np.clip(arr, 0, br)
+
+@lru_cache(maxsize=32)
+def get_eye_PSF_params(optimization: float, point_radius: int | float):
+    """ Returns parameters for the eye PSF based on the engine settings """
+    # Inverted outer radius of the PSF at the moment of transition [1/px]
+    a = optimization / point_radius
+    # Bloom scale factor
+    b = 1 / (np.pi / point_radius - a) # constant [px]
+    # Why π? It was chosen based on experience; yields the best results. I don't know the rationale behind it.
+    # It's the ratio of the point radius to the PSF overexposure radius at the moment of transition
+    # As the starting point, it also affects the speed of bloom size growth
+    return a, b
+
+def original_PSF(theta: float | npt.NDArray):
+    """ Unmodified photopic point source function from the research by Greg Spencer et al. (1995) """
+    f0 = 2.61e6 * np.exp(-(50*theta)**2)
+    f1 = 20.91 / (theta + 0.02)**3
+    f2 = 72.37 / (theta + 0.02)**2
+    return 0.384 * f0 + 0.478 * f1 + 0.138 * f2
+
+def render_original_PSF(theta: float | npt.NDArray):
+    """ Normalized original photopic PSF by Greg Spencer et al. (1995) """
+    return original_PSF(theta) / original_PSF(0)
+
+
+
+min_peak_radiances = (
+    1 / 255, # linear mode
+    1 / (255 * 12.92) # sRGB mode (with gamma correction at the end)
+)
+
 
 
 class RenderEngine:
@@ -10,50 +57,36 @@ class RenderEngine:
             width: int,
             height: int,
             channels: int = 3,
-            optimization: int | float = 0.1,
-            max_peak_radiance: int | float = 10_000,
-            point_radius_px: int | float = 2.0,
+            point_radius: int | float = 2.0,
+            optimization: int | float | None = 0.1,
+            max_irradiance: int | float | None = None,
+            color_saturation_limit: float = 0.1,
+            gamma_correction: bool = True,
             is_cylindrical: bool = False
         ) -> None:
         self.W = width
         self.H = height
         self.C = channels
+        self.point_radius = point_radius
+        self.optimization = optimization
+        self.max_irradiance = max_irradiance # variable, upper brightness limit
+        self.color_saturation_limit = color_saturation_limit # the ratio of the minimum color component to the maximum
+        self.gamma_correction = gamma_correction
+        self.is_cylindrical = is_cylindrical
+        # Creating the coordinate grid and the canvas template
         x_range = np.arange(self.W)
         y_range = np.arange(self.H)
-        if is_cylindrical:
+        if self.is_cylindrical:
             assert self.W == self.H * 2
             self.rad_per_px = np.pi / self.H
             x_range = (x_range + 0.5) * self.rad_per_px
             y_range = 0.5 * np.pi - (y_range + 0.5) * self.rad_per_px
         self.xx, self.yy = np.meshgrid(x_range, y_range)
         self.canvas_template = np.zeros(shape=(self.H, self.W, self.C))
-        self.is_cylindrical = is_cylindrical
-        self.color_saturation_limit = color_saturation_limit # The ratio of the minimum color component to the maximum
-        # Point mode parameters
-        self.point_radius_px = point_radius_px
-        # Eye PSF mode parameters
-        k = np.pi # ratio of the point radius to the PSF overexposure radius at the moment of transition
-        # As the starting point, it also affects the speed of bloom size growth
-        # Why π? It was chosen based on experience; yields the best results. I don't know the rationale behind it.
-        self.a = optimization / point_radius_px # inverted PSF outer radius at the moment of transition [1/px]
-        self.b = 1 / (k / point_radius_px - self.a) # constant [px]
-        self.max_peak_radiance = max_peak_radiance # variable, upper brightness limit
-        self.min_peak_radiance = 1 / (255 * 12.92) # from gamma correction implementation of sRGB color space
-
-    def render_point(self, px_dist: npt.NDArray):
-        """ Simple linear brightness distribution. """
-        return np.clip(1. - px_dist / self.point_radius_px, 0, None)
-
-    def render_eye_PSF(self, px_dist: npt.NDArray, br: float, max_theta: float):
-        """ Approximation of the human eye's point source function by Greg Spencer et al. (1995) """
-        arr = np.zeros_like(px_dist)
-        render_mask = px_dist < max_theta
-        arr[render_mask] = ((br**0.4 / px_dist[render_mask] - self.a) * self.b)**2.5
-        return np.clip(arr, 0, br)
 
     def draw_source(self,
             coordinates: tuple[float, float],
-            peak_radiance: float,
+            irradiance: float,
             color: npt.ArrayLike | None = None,
             canvas: npt.NDArray | None = None
         ):
@@ -67,16 +100,16 @@ class RenderEngine:
         if canvas is None:
             # Creating a black canvas if there's no one
             canvas = np.copy(self.canvas_template)
-        else:
+        elif canvas.shape != self.canvas_template.shape:
             # Checking the input
-            assert canvas.shape == self.canvas_template.shape
+            raise ValueError(
+                f'''Shape of the given canvas {canvas.shape} does not match
+                the shape of the engine's canvas template {self.canvas_template.shape}'''
+            )
 
-        if color is not None and self.C == 3:
-            # Normalization of the source's color by the green value,
-            # since the brightness is often given for the V filter
-            color = green_normalization(color)
-        else:
-            color = 1
+        # Normalization of the source's color by the green value,
+        # since the brightness is often given for the V filter
+        color = green_normalization(color, self.color_saturation_limit)
 
         # Setting the coordinates
         if self.is_cylindrical:
@@ -91,46 +124,70 @@ class RenderEngine:
             coords = (source_x, source_y)
             x_scale_factor = 1
 
-        # === Point mode ===
-        if peak_radiance > self.min_peak_radiance:
-            # Calculating right place(s) to render
-            boxes = self.find_box_boundaries(
-                source_x, source_y,
-                r_x = self.point_radius_px * x_scale_factor,
-                r_y = self.point_radius_px
-            )
-            for box in boxes:
-                # Rendering
-                px_dist_arr = self.find_distances(coords, box)
-                source_render = self.render_point(px_dist_arr) * min(peak_radiance, 1)
-                canvas[box] += source_render[..., np.newaxis] * color
+        # Calculating the peak radiance
+        peak_radiance = self.irradiance_to_peak_radiance(irradiance)
+        min_peak_radiance = min_peak_radiances[bool(self.gamma_correction)]
 
-        # === Eye PSF mode ===
-        if peak_radiance > 1:
-            # Preventing large size of the bloom
-            # (optional, is regulated by `max_peak_radiance`)
-            peak_radiance = self.brightness_rescaler(peak_radiance)
-            # Calculating bloom radius
-            if self.a != 0:
-                eye_PSF_radius = peak_radiance**0.4 / self.a
-            else:
-                eye_PSF_radius = np.inf
-            # Calculating right place(s) to render
-            if eye_PSF_radius != np.inf:
+        if self.optimization is None:
+
+            # === Original PSF mode ===
+            # For this mode, the radius of the point is effective:
+            # use 0.03 to match appearance, or 0.035 to conserve flux
+            deg_per_px = 0.03 / self.point_radius
+            px_dist_arr = self.find_distances(coords, box=None)
+            source_render = render_original_PSF(px_dist_arr * deg_per_px) * peak_radiance
+            canvas += source_render[..., np.newaxis] * color
+
+        else:
+
+            # === Point mode ===
+            if peak_radiance > min_peak_radiance:
+                # Calculating right place(s) to render
                 boxes = self.find_box_boundaries(
                     source_x, source_y,
-                    r_x = eye_PSF_radius * x_scale_factor,
-                    r_y = eye_PSF_radius
+                    r_x = self.point_radius * x_scale_factor,
+                    r_y = self.point_radius
                 )
-            else:
-                boxes = ((slice(None, None), slice(None, None)),)
-            for box in boxes:
-                # Rendering
-                px_dist_arr = self.find_distances(coords, box)
-                source_render = self.render_eye_PSF(px_dist_arr, peak_radiance, eye_PSF_radius)
-                canvas[box] += source_render[..., np.newaxis] * color
+                for box in boxes:
+                    # Rendering
+                    px_dist_arr = self.find_distances(coords, box)
+                    source_render = render_point(px_dist_arr, self.point_radius) * min(peak_radiance, 1)
+                    canvas[box] += source_render[..., np.newaxis] * color
+
+            # === Eye PSF mode ===
+            if peak_radiance > 1:
+                # Preventing large size of the bloom
+                # (optional, is regulated by `max_peak_radiance`)
+                peak_radiance = self.brightness_rescaler(peak_radiance)
+                # Calculating bloom radius
+                a, b = get_eye_PSF_params(self.optimization, self.point_radius)
+                if a != 0:
+                    eye_PSF_radius = peak_radiance**0.4 / a
+                else:
+                    eye_PSF_radius = np.inf
+                # Calculating right place(s) to render
+                if eye_PSF_radius != np.inf:
+                    boxes = self.find_box_boundaries(
+                        source_x, source_y,
+                        r_x = eye_PSF_radius * x_scale_factor,
+                        r_y = eye_PSF_radius
+                    )
+                else:
+                    boxes = ((slice(None, None), slice(None, None)),)
+                for box in boxes:
+                    # Rendering
+                    px_dist_arr = self.find_distances(coords, box)
+                    source_render = render_eye_PSF(px_dist_arr, peak_radiance, eye_PSF_radius, a, b)
+                    canvas[box] += source_render[..., np.newaxis] * color
 
         return canvas
+
+    def irradiance_to_peak_radiance(self, irradiance):
+        """
+        Converts total brightness of the light source (dimensionally W/m²)
+        to brightness distributed across the pixels (dimensionally W/(m² sr)).
+        """
+        return irradiance * 3 / (np.pi * self.point_radius**2)
 
     def find_box_boundaries(self, x, y, r_x, r_y):
         """
@@ -184,9 +241,11 @@ class RenderEngine:
             boxes.append((y_slice, x_slice_1))
         return boxes
 
-    def find_distances(self, coords, box):
+    def find_distances(self, coords, box: tuple[slice, slice] | None = None):
         """ Calculates array of distances to the center within the box. """
         x, y = coords
+        if box is None:
+            box = slice(None, None), slice(None, None)
         if self.is_cylindrical:
             # Spherical trigonometry:
             # θ = arccos(sin(φ1) * sin(φ2) + cos(φ1) * cos(φ2) * cos(Δλ))
@@ -202,100 +261,27 @@ class RenderEngine:
 
     def brightness_rescaler(self, br: float):
         """ Prevents bloom from spreading indefinitely. """
-        return (1. - 1. / (br / self.max_peak_radiance + 1.)) * self.max_peak_radiance
-
-
-
-class OriginalPSF:
-
-    def __init__(self,
-            width: int,
-            height: int,
-            channels: int = 3,
-            deg_per_px: float = 0.05,
-            is_cylindrical: bool = False
-        ) -> None:
-        self.W = width
-        self.H = height
-        x_range = np.arange(self.W)
-        y_range = np.arange(self.H)
-        if is_cylindrical:
-            assert self.W == self.H * 2
-            self.rad_per_px = np.pi / self.H
-            x_range = (x_range + 0.5) * self.rad_per_px
-            y_range = 0.5 * np.pi - (y_range + 0.5) * self.rad_per_px
-        self.xx, self.yy = np.meshgrid(x_range, y_range)
-        self.canvas_template = np.zeros(shape=(self.H, self.W, channels))
-        self.deg_per_px = deg_per_px
-        self.is_cylindrical = is_cylindrical
-
-    def draw_source(self,
-            coordinates: tuple[float, float],
-            peak_radiance: float,
-            color: npt.ArrayLike,
-            canvas: npt.NDArray | None = None
-        ):
-        """
-        Performs rendering of the source, adding it to the existing numpy array.
-        For a cylindrical map, `source_coords` are longitude and latitude,
-        while for a regular flat image these are X and Y coordinates in pixels.
-        Using a pre-created canvas increases the rendering speed by several times.
-        """
-        if canvas is None:
-            # Creating a black canvas if there's no one
-            canvas = np.copy(self.canvas_template)
+        if self.max_irradiance is None:
+            return br
         else:
-            # Checking the input
-            assert canvas.shape == self.canvas_template.shape
-        # Normalization of the source's color by the green value,
-        # since the brightness is often given for the V filter
-        color = green_normalization(color)
-        # Setting the coordinates
-        if self.is_cylindrical:
-            source_lon, source_lat = coordinates
-            source_x = source_lon / self.rad_per_px - 0.5
-            source_y = (0.5 * np.pi - source_lat) / self.rad_per_px - 0.5
-            # Spherical trigonometry:
-            # θ = arccos(sin(φ1) * sin(φ2) + cos(φ1) * cos(φ2) * cos(Δλ))
-            theta_arr = np.arccos(
-                np.sin(source_lat) * np.sin(self.yy) +
-                np.cos(source_lat) * np.cos(self.yy) * np.cos(self.xx - source_lon)
-            )
-            px_dist_arr = theta_arr / self.rad_per_px
-        else:
-            source_x = coordinates[0] - 0.5
-            source_y = coordinates[1] - 0.5
-            # Array of distances to the center
-            px_dist_arr = np.sqrt((self.xx - source_x)**2 + (self.yy - source_y)**2)
-        # Rendering
-        source_render = self.normalized_PSF(px_dist_arr * self.deg_per_px) * peak_radiance
-        canvas += source_render[..., np.newaxis] * color
-        return canvas
-
-    def original_PSF(self, theta: float | npt.NDArray):
-        """ Unmodified photopic point source function from the research by Greg Spencer et al. (1995) """
-        f0 = 2.61e6 * np.exp(-(50*theta)**2)
-        f1 = 20.91 / (theta + 0.02)**3
-        f2 = 72.37 / (theta + 0.02)**2
-        return 0.384 * f0 + 0.478 * f1 + 0.138 * f2
-
-    def normalized_PSF(self, theta: float | npt.NDArray):
-        return self.original_PSF(theta) / self.original_PSF(0)
+            return (1. - 1. / (br / self.max_irradiance + 1.)) * self.max_irradiance
 
 
-color_saturation_limit = 0.1
 
-def green_normalization(color: npt.ArrayLike) -> npt.NDArray:
+def green_normalization(color: npt.ArrayLike | None, color_saturation_limit: float = 0.1) -> int | npt.NDArray:
     """
     Normalizes the color by its green value and corrects extreme saturation.
     Brightness is often given for the V filter.
     """
-    color_arr = np.array(color)
-    color_arr /= color_arr.max()
-    delta = color_saturation_limit - color_arr.min()
-    if delta > 0:
-        color_arr += delta * (1 - color_arr)**2 # desaturating to the saturation limit
-    return color_arr / color_arr[1]
+    if color is None:
+        return 1
+    else:
+        color_arr = np.array(color)
+        color_arr /= color_arr.max()
+        delta = color_saturation_limit - color_arr.min()
+        if delta > 0:
+            color_arr += delta * (1 - color_arr)**2 # desaturating to the saturation limit
+        return color_arr / color_arr[1]
 
 def gamma_correction(arr0: npt.NDArray) -> npt.NDArray:
     """ Applies gamma correction in sRGB implementation to the array """
