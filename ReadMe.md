@@ -17,7 +17,7 @@ The main input of `draw_source()` is irradiance (dimensionally W/m²), a brightn
 
 Vega's color is used as an example. The values were calculated from the spectrum using [TrueColorTools](https://github.com/Askaniy).
 
-The radiance increases logarithmically.
+The irradiance increases logarithmically.
 
 <img src="examples/example_animation_orbiting.gif" width="256" />
 

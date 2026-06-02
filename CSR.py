@@ -125,6 +125,7 @@ class RenderEngine:
             x_scale_factor = 1
 
         # Calculating the peak radiance
+        irradiance = self.soft_clip(irradiance)
         peak_radiance = self.irradiance_to_peak_radiance(irradiance)
         min_peak_radiance = min_peak_radiances[bool(self.gamma_correction)]
 
@@ -156,9 +157,6 @@ class RenderEngine:
 
             # === Eye PSF mode ===
             if peak_radiance > 1:
-                # Preventing large size of the bloom
-                # (optional, is regulated by `max_peak_radiance`)
-                peak_radiance = self.brightness_rescaler(peak_radiance)
                 # Calculating bloom radius
                 a, b = get_eye_PSF_params(self.optimization, self.point_radius)
                 if a != 0:
@@ -259,12 +257,12 @@ class RenderEngine:
             px_dist_arr = np.sqrt((self.xx[box] - x)**2 + (self.yy[box] - y)**2)
         return px_dist_arr
 
-    def brightness_rescaler(self, br: float):
+    def soft_clip(self, irradiance: float):
         """ Prevents bloom from spreading indefinitely. """
         if self.max_irradiance is None:
-            return br
+            return irradiance
         else:
-            return (1. - 1. / (br / self.max_irradiance + 1.)) * self.max_irradiance
+            return (1. - 1. / (irradiance / self.max_irradiance + 1.)) * self.max_irradiance
 
 
 
